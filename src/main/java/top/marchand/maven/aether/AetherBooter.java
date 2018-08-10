@@ -3,7 +3,9 @@ package top.marchand.maven.aether;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.apache.maven.settings.building.DefaultSettingsBuilder;
 import org.apache.maven.settings.building.DefaultSettingsBuilderFactory;
@@ -30,6 +32,11 @@ import top.marchand.maven.aether.utils.ConsoleTransferListener;
  * @author cmarchand
  */
 public class AetherBooter {
+    static final Map<String, RemoteRepository> KNOWN_REPOS = new HashMap<>();
+    static {
+        RemoteRepository central = newCentralRepository();
+        KNOWN_REPOS.put(central.getId(), central);
+    }
     
     /**
      * Returns a new RepositorySystem, correctly initializedÒ
@@ -60,12 +67,22 @@ public class AetherBooter {
 
     /**
      * Creates and return a repository list with at least central repository in.
+     * If session contains mirrors for one of the known repository, it is used.
      * @param system The system repository to use
      * @param session The session to use.
      * @return The repository list
      */
     public static List<RemoteRepository> newRepositories( RepositorySystem system, RepositorySystemSession session ) {
-        return new ArrayList<>( Arrays.asList( newCentralRepository() ) );
+        ArrayList<RemoteRepository> ret = new ArrayList<>();
+        KNOWN_REPOS.values().forEach((rr) -> {
+            RemoteRepository mirror = session.getMirrorSelector().getMirror(rr);
+            if(mirror!=null) {
+                ret.add(mirror);
+            } else {
+                ret.add(rr);
+            }
+        });
+        return ret;
     }
     
     /**
